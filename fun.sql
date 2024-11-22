@@ -1,0 +1,8 @@
+CREATE OR REPLACE FUNCTION add_num(a INT, b INT)
+RETURNS INT AS $$
+BEGIN
+    RETURN a+b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_numbers(10, 20)

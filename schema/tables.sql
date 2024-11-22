@@ -175,6 +175,11 @@ CREATE TABLE transaction_denomination (
     )
 );
 
+--Create a transaction journey flow (how data will be stored in these tables)
+
+--deno_value : total amnt (200USD)
+--deno_label : 200
+--deno_count : total notes / coins (2) like 2 100USD notes
 
 /*
 1. Branch?  -> Branch_Id
@@ -185,14 +190,15 @@ CREATE TABLE transaction_denomination (
 6. Comments? in Transactions (to store Y, N or comment content?) -> flag, may not be required
 7.provider? user? (in session master) 0> provider : validator, user -> customer
 8.Tenant, Branch pk? in tillmaster, transaction_master  -> composite keys
-
-TBD
 1. Transaction_Denomination -> Transaction_id is primary key and foreign key at the same time?  -> okay
 2. UserTillMaster -> TillId is foreign key and primary too?  -> okay
-- 3. Denominations? JSON combination of FK and data -> check constraint/serialize it
-- 4. Denomination_value?
+3. Denominations? JSON combination of FK and data -> check constraint/serialize it
+4. Denomination_value?
 5. Primary keys combination in some tables? -> make composite keys but txn_id should be mandatory -> ask shrujan  -> make composite
 - 6. user_provider? etc in user till master
 - 7. Created_By? Created_by_provider etc in Transactions?
-- 8. Status pk? in transactions
+
+TBD
+- Create a transaction journey flow (how data will be stored in these tables)
+- Session master account json?
 */
