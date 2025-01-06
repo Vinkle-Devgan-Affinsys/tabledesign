@@ -33,7 +33,6 @@ CREATE TABLE session_master (
     last_name VARCHAR(50),
     dob DATE,
     gender CHAR(1) CHECK (gender IN ('M', 'F', 'O')),
-    callback_done CHAR(1) CHECK (callback_done IN ('Y', 'N')),
     PRIMARY KEY (sessionid)
 );
 
@@ -63,15 +62,16 @@ CREATE TABLE transactions (
     auth_status CHAR(1) CHECK (auth_status IN ('A', 'U', 'R')),                                     --(A = Auth, U = Unauthorised, R = Refered)
     sessionid UUID,
     created_by VARCHAR(50),
-    created_by_user_id VARCHAR(50),
+    created_by_user_id INT,
     created_by_provider VARCHAR(50),
     create_timestamp TIMESTAMP WITH TIME ZONE,
     last_updated_user VARCHAR(50),
-    last_updated_user_id VARCHAR(50),
+    last_updated_user_id INT,
     last_updated_user_provider VARCHAR(50),
     last_updated_timestamp TIMESTAMP WITH TIME ZONE,
     comments CHAR(1) CHECK (comments IN ('Y', 'N')),
     data_table JSONB,                           --whole transaction screen json
+    callback_done CHAR(1) CHECK (callback_done IN ('Y', 'N')),
     PRIMARY KEY (transaction_id, transaction_status),
     FOREIGN KEY (transaction_code) REFERENCES transaction_master(transaction_code),
     FOREIGN KEY (sessionid) REFERENCES session_master(sessionid)
@@ -131,8 +131,7 @@ CREATE TABLE till_master(
     currency_code VARCHAR(5) NOT NULL,
     denominations JSONB,  -- Changed to: { "denom_code": "denom_count", "denom_code": "denom_count" }
     amount INT,
-    PRIMARY KEY (tenant, branch_id, till_id),
-    UNIQUE (till_id, currency_code),
+    PRIMARY KEY (tenant, branch_id, till_id, currency_code),
     FOREIGN KEY (currency_code) REFERENCES currency_master(currency_code)
 );
 
@@ -146,8 +145,7 @@ CREATE TABLE user_till_master (
     aprover_provider VARCHAR(20),
     aprover_id INT NOT NULL,
     aprover_name VARCHAR(20),
-    PRIMARY KEY (tenant, branch_id, userid),
-    FOREIGN KEY (tenant, branch_id, till_id) REFERENCES till_master(tenant, branch_id, till_id)
+    PRIMARY KEY (tenant, branch_id, userid)
 );
 
 CREATE TABLE audit_log_txns (
@@ -176,5 +174,5 @@ CREATE TABLE transaction_denomination (
     denominations JSONB NOT NULL,                   --{Denom_code (FK): denomination code (denomination_master), denom_count: Count of denominations}
     PRIMARY KEY (tenant, branch_id, transaction_id),
     FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
-    FOREIGN KEY (tenant, branch_id, till_id) REFERENCES till_master(tenant, branch_id, till_id)
+    FOREIGN KEY (tenant, branch_id, till_id, currency_code) REFERENCES till_master(tenant, branch_id, till_id, currency_code)
 );

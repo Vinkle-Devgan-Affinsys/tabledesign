@@ -1,7 +1,7 @@
 -- Active: 1732686745279@@127.0.0.1@5432@postgres
 
 -- function checking denom_code valid or not
-CREATE OR REPLACE FUNCTION denom_validate_till_master_ex2()
+CREATE OR REPLACE FUNCTION denom_validate_till_master()
 RETURNS TRIGGER AS $$
 DECLARE
     denom_code TEXT;
@@ -31,10 +31,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 --trigger for denomination validation
-CREATE TRIGGER trigger_denom_validate_till_master_ex2
-BEFORE INSERT OR UPDATE ON till_master_ex
+CREATE TRIGGER trigger_denom_validate_till_master
+BEFORE INSERT OR UPDATE ON till_master
 FOR EACH ROW
-EXECUTE FUNCTION denom_validate_till_master_ex2();
+EXECUTE FUNCTION denom_validate_till_master();
 
 --function checking user's till access
 CREATE OR REPLACE FUNCTION validate_user_till_access()
@@ -60,7 +60,7 @@ FOR EACH ROW
 EXECUTE FUNCTION validate_user_till_access();
 
 --Till update function
-CREATE OR REPLACE FUNCTION amnt_compute_till_master_ex6(
+CREATE OR REPLACE FUNCTION amnt_compute_till_master(
     tenant_p VARCHAR(50),
     branch_id_p INT,
     till_id_p INT,
@@ -79,12 +79,12 @@ DECLARE
     existing_denominations JSONB;
     updated_denominations JSONB := '{}'::JSONB;
     row_exists BOOLEAN;
-    transactionid INT := 7;
+    transactionid INT := 1;
 BEGIN
 --checking if that row exists or not
     SELECT EXISTS (
         SELECT 1
-        FROM till_master_ex
+        FROM till_master
         WHERE tenant = tenant_p
         AND branch_id = branch_id_p
         AND till_id = till_id_p
@@ -94,7 +94,7 @@ BEGIN
     IF row_exists THEN
 -- Fetch existing denominations
         SELECT denominations INTO existing_denominations
-        FROM till_master_ex
+        FROM till_master
         WHERE tenant = tenant_p
         AND branch_id = branch_id_p
         AND till_id = till_id_p
@@ -164,19 +164,25 @@ BEGIN
         VALUES (tenant_p, branch_id_p, till_id_p, till_status_p, till_type_p, currency_code_p, updated_denominations, total_amount);
 
     END IF;
-    COMMIT;
 EXCEPTION
     WHEN OTHERS THEN
-        ROLLBACK;
+        RAISE;
+
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE TRIGGER validate_access_trigger
+BEFORE INSERT ON audit_log_txns
+FOR EACH ROW
+EXECUTE FUNCTION validate_user_till_access();
+
 --MAIN flow function
+
 CREATE OR REPLACE FUNCTION flow(
     tenant VARCHAR(50),
     branch_id INT, 
     cif VARCHAR(50),
-    userid INT,         --teller
+    userid INT,
     customer_rep CHAR(1)
 )
 RETURNS TEXT AS $$
@@ -191,74 +197,88 @@ DECLARE
     total_amount INT := 0;
 BEGIN
 --session creation
-    SELECT EXISTS (
-        SELECT 1
-        FROM session_master as sm
-        WHERE sm.tenant = flow.tenant
-        AND sm.branch_id = flow.branch_id
-        AND sm.cif = flow.cif
-    ) INTO session_exists;
 
-    IF session_exists THEN
-        SELECT sessionid INTO sessionid1
-        FROM session_master as sm
-        WHERE sm.tenant = flow.tenant
-        AND sm.branch_id = flow.branch_id
-        AND sm.cif = flow.cif;
+--checking if customer or non customer
+    IF flow.customer_rep = 'C' THEN
+    --if customer
+        SELECT EXISTS (
+            SELECT 1
+            FROM session_master as sm
+            WHERE sm.tenant = flow.tenant
+            AND sm.branch_id = flow.branch_id
+            AND sm.cif = flow.cif
+        ) INTO session_exists;
+    --check if session exists already, use the existing session
+        IF session_exists THEN
+            SELECT sessionid INTO sessionid1
+            FROM session_master as sm
+            WHERE sm.tenant = flow.tenant
+            AND sm.branch_id = flow.branch_id
+            AND sm.cif = flow.cif;
+    --if session does not exist, create a new session for customer
+        ELSE
+            sessionid1 := uuid_generate_v4();
+            INSERT INTO session_master (
+                tenant, branch_id, sessionid, customer_rep, authentication_method, cif, account_no, session_start, userid, provider_name, username, id_type, id_no, first_name, last_name, dob, gender
+            )
+            VALUES (
+                tenant, branch_id, sessionid1, customer_rep, 'Card', cif, '{"Acc1": "USD", "Acc2": "INR"}' , CURRENT_TIMESTAMP,  1234, 'Vinkle', 'Aditi', 'NID', '345678', 'Aditi', 'Sharma', '2024-09-01', 'F'
+            );
+        END IF;
+    --non-customer: always create a new session
     ELSE
         sessionid1 := uuid_generate_v4();
         INSERT INTO session_master (
-            tenant, branch_id, sessionid, customer_rep, authentication_method, cif, account_no, session_start, userid, provider_name, username, id_type, id_no, first_name, last_name, dob, gender, callback_done
+            tenant, branch_id, sessionid, customer_rep, authentication_method, cif, account_no, session_start, userid, provider_name, username, id_type, id_no, first_name, last_name, dob, gender
         )
         VALUES (
-            tenant, branch_id, sessionid1, 'C','Card', cif, '{"Acc1": "USD", "Acc2": "INR"}' , CURRENT_TIMESTAMP,  'User 001', 'Vinkle', 'Aditi', 'NID', '1234567', 'Aditi', 'Sharma', '2024-09-01', 'F', 'Y'
+            tenant, branch_id, sessionid1, customer_rep,'Card', cif, '{"Acc1": "USD", "Acc2": "INR"}' , CURRENT_TIMESTAMP,  1234, 'Vinkle', 'Aditi', 'NID', '345678', 'Aditi', 'Sharma', '2024-09-01', 'F'
         );
     END IF;
 
---checking if callback done or not
-    IF (SELECT sm.callback_done 
-        FROM session_master sm 
-        WHERE sm.sessionid = sessionid1) = 'Y' THEN
+-- --checking if callback done or not
+--     IF (SELECT sm.callback_done 
+--         FROM session_master sm 
+--         WHERE sm.sessionid = sessionid1) = 'Y' THEN
 
 --txn type + data (transactions)
-        INSERT INTO transactions ( tenant, branch_id, transaction_id, transaction_code, transaction_status, auth_status, sessionid, created_by, created_by_user_id, created_by_provider, create_timestamp, last_updated_user, last_updated_user_id, last_updated_user_provider, last_updated_timestamp, comments, data_table)
-        VALUES 
-        ( tenant, branch_id, 7, 'TX001', 'D', 'U', sessionid1, 'Aditi', '111', 'Vinkle', CURRENT_TIMESTAMP, 'V', 'User04', 'Vinkle', '2024-11-26 12:30:00', 'N', '{"data": "values"}');
+    INSERT INTO transactions ( tenant, branch_id, transaction_id, transaction_code, transaction_status, auth_status, sessionid, created_by, created_by_user_id, created_by_provider, create_timestamp, last_updated_user, last_updated_user_id, last_updated_user_provider, last_updated_timestamp, comments, data_table, callback_done)
+    VALUES 
+    ( tenant, branch_id, 1, 'TX002', 'D', 'U', sessionid1, 'Aditi', 1234, 'Vinkle', '2024-11-26 10:30:00', 'V', 1, 'Vinkle', '2024-11-26 12:30:00', 'Y', '{"data": "values"}', 'Y');
 
 --if comments present push to comments table
-        IF EXISTS(
-            SELECT 1
-            FROM transactions txns 
-            WHERE txns.sessionid = sessionid1
-            AND txns.comments = 'Y'
-        ) THEN
-            INSERT INTO comments
-            VALUES (tenant, branch_id, sessionid1, 7, 3, 'Vinkle', 'Aditi', '111', 'this is also a comment', CURRENT_TIMESTAMP);
-        END IF;
+    IF (SELECT txns.comments 
+    FROM transactions txns 
+    WHERE txns.sessionid = sessionid1) = 'Y' THEN
+        INSERT INTO comments
+    VALUES (tenant, branch_id, sessionid1, 1, 1, 'Vinkle', 'Aditi', 1234, 'this is a comment', CURRENT_TIMESTAMP);
+    END IF;
 
 --denomination
-        INSERT INTO transaction_denomination_ex (tenant, branch_id, transaction_id, till_id, currency_code, related_account, amount, denominations )
-        VALUES (
-            tenant, branch_id, 7, 1, 'USD', 'NA', '200', '{"20":1}'
-        );
+    INSERT INTO transaction_denomination (tenant, branch_id, transaction_id, till_id, currency_code, related_account, amount, denominations )
+    VALUES (
+        tenant, branch_id, 1, 1, 'INR', 'NA', 200, '{"20":1}'
+    );
 
---till update + audit log
-        PERFORM amnt_compute_till_master_ex6(tenant, branch_id, 1, 'O', 'Till', 'USD', '{"20":1}'::JSONB, userid);
+--till update
+        -- INSERT INTO till_master_new (tenant, branch_id, till_id, till_status, till_type, currency_code, denominations)
+        -- VALUES ('fcbsmartbranch', 1, 1, 'O', 'Till', 'INR', '{"19": 1, "20":  2}'::JSONB);
+    PERFORM amnt_compute_till_master(tenant, branch_id, 1, 'C', 'Till', 'INR', '{"20":1}'::JSONB, userid);
 
 --fin txns
         --need a flag here for credit/debit transaction type
-        INSERT INTO financial_transactions
-        VALUES (
-            tenant, branch_id, sessionid1, 7, 'Y', 'ACC2', 'ACC1', 'USD', 'USD', '200', '200', 'Income', 'Saving', 'R1', 'R2', 'NA', 'NA', 'Y', 'NA', 'Y', '2024-11-28 14:30:00+05:30', 'Inst2', '2024-11-28 14:30:00+05:30', 'I1', '2024-11-28 14:30:00+05:30'
-        );
-    END IF;    
-    COMMIT;
+    INSERT INTO financial_transactions
+    VALUES (
+        tenant, branch_id, sessionid1, 3, 'Y', 'ACC2', 'ACC1', 'INR', 'INR', '200', '200', 'Income', 'Saving', 'R1', 'R2', 'NA', 'NA', 'Y', 'NA', 'Y', CURRENT_TIMESTAMP, 'Inst2', CURRENT_TIMESTAMP, 'I1', CURRENT_TIMESTAMP
+    );
+    -- ELSE
+    --     RETURN 'Callback not done!';
+    -- END IF;    
     RETURN 'Flow Completed';
 EXCEPTION
     WHEN OTHERS THEN
-        ROLLBACK;
         RETURN 'Flow processing failed. Error: ' || SQLERRM;
 END;
 $$ LANGUAGE plpgsql;  
 
-SELECT flow('fcbsmartbranch', 1, '7890CIF', 1);
+SELECT flow('fcbsmartbranch', 1, '2121CIF', 1, 'C');

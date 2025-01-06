@@ -51,3 +51,19 @@ VALUES
     ('fcbsmartbranch', 1, 'TX010', 'Account Balance Inquiry'),
     ('fcbsmartbranch', 1, 'TX011', 'In-House Cheque Deposit Same Currency'),
     ('fcbsmartbranch', 1, 'TX012', 'In-House Cheque Deposit Cross Currency');
+
+
+INSERT INTO till_master
+VALUES
+    ('fcbsmartbranch', 1, 1, 'O', 'Till', 'INR', '{"12": 2, "18": 1, "20": 2}'::JSONB, 452),
+    ('fcbsmartbranch', 1, 1, 'O', 'Till', 'USD', '{"1": 2, "8": 1, "2": 2}'::JSONB, 1012),
+    ('fcbsmartbranch', 1, 2, 'C', 'Till', 'INR', '{"19": 2, "22": 2}'::JSONB, 2200),
+    ('fcbsmartbranch', 1, 2, 'C', 'Till', 'USD', '{"3": 2, "4": 1, "6": 2}'::JSONB, 245);
+
+
+INSERT INTO user_till_master
+VALUES
+    ('fcbsmartbranch', 1, 'u_provider','u_name', 1, 1, 'a_provider', 1, 'a_name'),
+    ('fcbsmartbranch', 1, 'u_provider','u_name', 2, 2, 'a_provider', 2, 'a_name');
+
+

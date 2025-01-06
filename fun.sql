@@ -588,7 +588,6 @@ TBD
 --     );
 -- END IF;
 
-
 CREATE OR REPLACE FUNCTION flow(
     tenant VARCHAR(50),
     branch_id INT, 
@@ -644,8 +643,8 @@ BEGIN
         IF (SELECT txns.comments 
         FROM transactions txns 
         WHERE txns.sessionid = sessionid1) = 'Y' THEN
-            INSERT INTO comments()
-            VALUES (tenant, branch_id, sessionid1, 5, 1, 'Vinkle', 'Aditi', '4321', 'this is a comment', '2024-11-28 14:30:00+05:30')
+            INSERT INTO comments
+            VALUES (tenant, branch_id, sessionid1, 5, 1, 'Vinkle', 'Aditi', '4321', 'this is a comment', '2024-11-28 14:30:00+05:30');
         END IF;
 
 --denomination
@@ -671,7 +670,7 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN 'Flow processing failed. Error: ' || SQLERRM;
 END;
-$$ LANGUAGE plpgsql;  
+$$ LANGUAGE plpgsql; 
 
 
 -- CREATE TABLE till_master (
