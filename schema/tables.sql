@@ -148,20 +148,6 @@ CREATE TABLE user_till_master (
     PRIMARY KEY (tenant, branch_id, userid)
 );
 
-CREATE TABLE audit_log_txns (
-    tenant VARCHAR(50) NOT NULL,
-    branch_id INT NOT NULL,
-    audit_id INT PRIMARY KEY,
-    transaction_id VARCHAR(50) NOT NULL,
-    till_id INT NOT NULL,
-    currency_code VARCHAR(50) NOT NULL,
-    amount INT NOT NULL,
-    updated_denominations JSONB NOT NULL,
-    update_date TIMESTAMP WITH TIME ZONE,
-    userid INT NOT NULL,            --user id making the change
-    username VARCHAR(50) NOT NULL,       --user making the change
-    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
-);
 
 CREATE TABLE transaction_denomination (
     tenant VARCHAR(50) NOT NULL,
@@ -176,3 +162,18 @@ CREATE TABLE transaction_denomination (
     FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
     FOREIGN KEY (tenant, branch_id, till_id, currency_code) REFERENCES till_master(tenant, branch_id, till_id, currency_code)
 );
+
+-- CREATE TABLE audit_log_txns (
+--     tenant VARCHAR(50) NOT NULL,
+--     branch_id INT NOT NULL,
+--     audit_id INT PRIMARY KEY,
+--     transaction_id VARCHAR(50) NOT NULL,
+--     till_id INT NOT NULL,
+--     currency_code VARCHAR(50) NOT NULL,
+--     amount INT NOT NULL,
+--     updated_denominations JSONB NOT NULL,
+--     update_date TIMESTAMP WITH TIME ZONE,
+--     userid INT NOT NULL,            --user id making the change
+--     username VARCHAR(50) NOT NULL,       --user making the change
+--     FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
+-- );
