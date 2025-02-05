@@ -205,7 +205,7 @@ class TillMaster(Base):
     till_type: Mapped[Optional[str]] = mapped_column(String(20))
     currency_code: Mapped[str] = mapped_column(String(10))
     denominations: Mapped[Optional[dict]] = mapped_column(JSONB)
-    amount: Mapped[int] = mapped_column(Integer)
+    balance: Mapped[int] = mapped_column(Integer)
 
     __table_args__ = (
         PrimaryKeyConstraint(['tenant', 'branch_id', 'till_id', 'currency_code'], name='till_master_pkey'),
@@ -230,7 +230,9 @@ class UserTillMaster(Base):
     aprover_name: Mapped[str] = mapped_column(String(50))
 
     __table_args__ = (
-        PrimaryKeyConstraint(['tenant', 'branch_id', 'userid'], name='user_till_master_pkey')
+        PrimaryKeyConstraint(['tenant', 'branch_id', 'userid'], name='user_till_master_pkey'),
+        ForeignKeyConstraint(['till_id'], ['till_master.till_id'],
+                        name='user_till_master_fk_till_id')
     )
 
 
@@ -246,29 +248,11 @@ class TransactionDenomination(Base):
     denominations: Mapped[Optional[dict]] = mapped_column(JSONB)
 
     __table_args__ = (
-        PrimaryKeyConstraint(['tenant', 'branch_id', 'transaction_id'], name='transaction_denomination_pkey'),
+        PrimaryKeyConstraint(['tenant', 'branch_id', 'till_id', 'transaction_id'], name='transaction_denomination_pkey'),
         ForeignKeyConstraint(['transaction_id'], ['transactions.transaction_id'],
                         name='transaction_denomination_fk_transaction_id'),
-        ForeignKeyConstraint(['tenant', 'branch_id', 'till_id', 'currency_code'], ['till_master.tenant', 'till_master.branch_id', 'till_master.till_id', 'till_master.currency_code'],
-                        name='transaction_denomination_fk_composite')
+        ForeignKeyConstraint(['till_id'], ['till_master.till_id'],
+                        name='transaction_denomination_fk_till_id'),
+        ForeignKeyConstraint(['currency_code'], ['currency_master.currency_code'],
+                        name='transaction_denomination_fk_currency_code')
     )
-
-# class AuditLogTxns(Base):
-#     __tablename__ = 'audit_log_txns'
-#     tenant: Mapped[str] = mapped_column(String(100))
-#     branch_id: Mapped[int] = mapped_column(Integer)
-#     till_id: Mapped[int] = mapped_column(Integer)
-#     audit_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-#     transaction_id: Mapped[str] = mapped_column(String(50))
-#     currency_code: Mapped[str] = mapped_column(String(10))
-#     amount: Mapped[int] = mapped_column(Integer)
-#     updated_denominations: Mapped[Optional[dict]] = mapped_column(JSONB)
-#     update_date: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True))
-#     userid: Mapped[int] = mapped_column(Integer)
-#     username: Mapped[str] = mapped_column(String(100))
-
-#     __table_args__ = (
-#         PrimaryKeyConstraint('audit_id', name='audit_log_txns_pkey'),
-#         ForeignKeyConstraint(['transaction_id'], ['transactions.transaction_id'],
-#                         name='audit_log_fk_transaction_id')
-#     )

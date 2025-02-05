@@ -125,12 +125,12 @@ CREATE TABLE comments (
 CREATE TABLE till_master(
     tenant VARCHAR(50) NOT NULL,
     branch_id INT NOT NULL,
-    till_id INT NOT NULL,
+    till_id INT UNIQUE NOT NULL,
     till_status CHAR(1) CHECK (till_status IN ('O', 'C')),         --(O - Open, C - Close)
     till_type VARCHAR(20) CHECK (till_type IN ('Till', 'vault', 'chief teller', 'cash centre')),
     currency_code VARCHAR(5) NOT NULL,
     denominations JSONB,  -- Changed to: { "denom_code": "denom_count", "denom_code": "denom_count" }
-    amount INT,
+    balance INT,
     PRIMARY KEY (tenant, branch_id, till_id, currency_code),
     FOREIGN KEY (currency_code) REFERENCES currency_master(currency_code)
 );
@@ -146,6 +146,8 @@ CREATE TABLE user_till_master (
     aprover_id INT NOT NULL,
     aprover_name VARCHAR(20),
     PRIMARY KEY (tenant, branch_id, userid)
+    FOREIGN KEY (till_id) REFERENCES till_master(till_id)
+
 );
 
 
@@ -158,9 +160,12 @@ CREATE TABLE transaction_denomination (
     related_account VARCHAR(50),          --Offset account (customer’s or other till /valut account)
     amount INT NOT NULL,                   --transaction amount (in the currency of transaction)
     denominations JSONB NOT NULL,                   --{Denom_code (FK): denomination code (denomination_master), denom_count: Count of denominations}
-    PRIMARY KEY (tenant, branch_id, transaction_id),
+    PRIMARY KEY (tenant, branch_id, till_id, transaction_id),
     FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
-    FOREIGN KEY (tenant, branch_id, till_id, currency_code) REFERENCES till_master(tenant, branch_id, till_id, currency_code)
+    FOREIGN KEY (till_id) REFERENCES till_master(till_id),
+    FOREIGN KEY (currency_code) REFERENCES currency_master(currency_code)
+    -- FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+    -- FOREIGN KEY (tenant, branch_id, till_id, currency_code) REFERENCES till_master(tenant, branch_id, till_id, currency_code)
 );
 
 -- CREATE TABLE audit_log_txns (

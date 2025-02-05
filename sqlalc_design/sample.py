@@ -39,7 +39,7 @@ class Application(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tenant: Mapped[str] = mapped_column(String(255))
     internal_reference: Mapped[str] = mapped_column(String(255))
-    version_no: Mapped[int] = mapped_column(Integer)
+    version_no: Mapped[int] = mapped_column(Integer) 
     application_type: Mapped[str] = mapped_column(String(255))
     customer_type: Mapped[str] = mapped_column(String(255))
     external_reference: Mapped[Optional[str]] = mapped_column(String(255))
